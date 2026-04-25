@@ -240,6 +240,21 @@ pre,code {
 .code-copy-button[data-copy-state="error"] {
   color: var(--bs-danger-text-emphasis);
   border-color: currentColor;
+
+.not-found-page {
+  display: flex;
+  align-items: center;
+  min-height: 60vh;
+}
+
+.not-found-page .post {
+  width: 100%;
+}
+
+.not-found-code {
+  font-size: 50px;
+  line-height: 1;
+  margin-bottom: 0.75rem;
 }
 
 .eiptable .title {
