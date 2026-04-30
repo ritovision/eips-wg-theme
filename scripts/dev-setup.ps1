@@ -53,22 +53,67 @@ function Test-DirectoryOnPath {
     return $false
 }
 
-function Add-DefaultBinToSessionPath {
+function Add-PathNote {
     param([string]$InstallDir)
 
-    if (-not (Test-DirectoryOnPath -Directory $InstallDir)) {
-        if ([string]::IsNullOrEmpty($env:Path)) {
-            $env:Path = $InstallDir
-        } else {
-            $env:Path = "$InstallDir;$env:Path"
+    $target = ConvertTo-NormalizedDirectoryPath -Directory $InstallDir
+    foreach ($pathNote in $script:PathNotes) {
+        $candidate = ConvertTo-NormalizedDirectoryPath -Directory $pathNote
+        if ([string]::Equals($candidate, $target, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return
         }
+    }
 
-        $script:PathNote = $InstallDir
+    $script:PathNotes += $InstallDir
+}
+
+function Move-DirectoryToFrontOfSessionPath {
+    param([string]$InstallDir)
+
+    $target = ConvertTo-NormalizedDirectoryPath -Directory $InstallDir
+    $remainingEntries = @()
+
+    if (-not [string]::IsNullOrWhiteSpace($env:Path)) {
+        foreach ($entry in ($env:Path -split ";")) {
+            if ([string]::IsNullOrWhiteSpace($entry)) {
+                continue
+            }
+
+            $candidate = ConvertTo-NormalizedDirectoryPath -Directory $entry
+            if ([string]::Equals($candidate, $target, [System.StringComparison]::OrdinalIgnoreCase)) {
+                continue
+            }
+
+            $remainingEntries += $entry
+        }
+    }
+
+    $newEntries = @($InstallDir)
+    if ($remainingEntries.Count -gt 0) {
+        $newEntries += $remainingEntries
+    }
+
+    $updatedPath = [string]::Join(";", $newEntries)
+    if (-not [string]::Equals($env:Path, $updatedPath, [System.StringComparison]::Ordinal)) {
+        $env:Path = $updatedPath
+
+        Add-PathNote -InstallDir $InstallDir
     }
 }
 
 function Find-BuildEipsOnPath {
     foreach ($commandName in @("build-eips", "build-eips.exe")) {
+        $commands = @(Get-Command -Name $commandName -CommandType Application -ErrorAction SilentlyContinue)
+        if ($commands.Count -gt 0) {
+            return $commands[0].Source
+        }
+    }
+
+    return $null
+}
+
+function Find-ZolaOnPath {
+    foreach ($commandName in @("zola", "zola.exe")) {
         $commands = @(Get-Command -Name $commandName -CommandType Application -ErrorAction SilentlyContinue)
         if ($commands.Count -gt 0) {
             return $commands[0].Source
@@ -163,6 +208,19 @@ function Assert-ArchiveChecksum {
     }
 }
 
+function Assert-FileSha256 {
+    param(
+        [string]$ArchivePath,
+        [string]$ExpectedHash,
+        [string]$ArchiveName
+    )
+
+    $actualHash = (Get-FileHash -Algorithm SHA256 -Path $ArchivePath).Hash.ToLowerInvariant()
+    if ($actualHash -ne $ExpectedHash.ToLowerInvariant()) {
+        Die "checksum mismatch for $ArchiveName"
+    }
+}
+
 function Install-BuildEips {
     param(
         [string]$InstallDir,
@@ -211,6 +269,167 @@ function Install-BuildEips {
     }
 }
 
+function Get-ZolaReleaseAsset {
+    $architecture = $env:PROCESSOR_ARCHITECTURE
+    if ([string]::IsNullOrWhiteSpace($architecture)) {
+        $architecture = "unknown"
+    }
+    if (($architecture -eq "x86") -and (-not [string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432))) {
+        $architecture = $env:PROCESSOR_ARCHITEW6432
+    }
+
+    switch ($architecture.ToUpperInvariant()) {
+        "AMD64" {
+            return @{
+                ArchiveName = "zola-v0.22.1-x86_64-pc-windows-msvc.zip"
+                Hash = "2c8b368f5abdf2b2478748f9549a761fd6599238e18948eccb76a7cae51f5dc1"
+            }
+        }
+        default {
+            Die "Unsupported platform Windows/$architecture for automatic Zola install. Install Zola 0.22.1 manually from https://github.com/getzola/zola/releases and ensure it is on PATH."
+        }
+    }
+}
+
+function Install-Zola {
+    param(
+        [string]$InstallDir,
+        [string]$ZolaPath
+    )
+
+    $asset = Get-ZolaReleaseAsset
+    $archiveName = $asset.ArchiveName
+    $archiveHash = $asset.Hash
+    $releaseBaseUrl = "https://github.com/getzola/zola/releases/download/v0.22.1"
+    $tmpRoot = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("zola-" + [System.Guid]::NewGuid().ToString("N"))
+    $archivePath = Join-Path -Path $tmpRoot -ChildPath $archiveName
+    $extractDir = Join-Path -Path $tmpRoot -ChildPath "extract"
+
+    try {
+        Assert-InstallDirWritable -InstallDir $InstallDir
+
+        New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
+
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
+        Say "Installing zola 0.22.1 from $releaseBaseUrl/$archiveName"
+        Invoke-ReleaseDownload -Url "$releaseBaseUrl/$archiveName" -Destination $archivePath
+        Assert-FileSha256 -ArchivePath $archivePath -ExpectedHash $archiveHash -ArchiveName $archiveName
+
+        Expand-Archive -LiteralPath $archivePath -DestinationPath $extractDir -Force
+
+        $extractedZola = Join-Path -Path $extractDir -ChildPath "zola.exe"
+        if (-not (Test-Path -LiteralPath $extractedZola -PathType Leaf)) {
+            Die "zola release archive did not contain expected zola.exe"
+        }
+
+        try {
+            Move-Item -LiteralPath $extractedZola -Destination $ZolaPath -Force
+        } catch {
+            Die ("zola.exe is in use. Close any running zola process and re-run this script. Details: {0}" -f $_.Exception.Message)
+        }
+
+        return $ZolaPath
+    } catch {
+        Die ("failed to install zola: {0}" -f $_.Exception.Message)
+    } finally {
+        if (Test-Path -LiteralPath $tmpRoot) {
+            Remove-Item -LiteralPath $tmpRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Get-ZolaVersionInfo {
+    param([string]$ZolaPath)
+
+    try {
+        $output = & $ZolaPath --version 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+    } catch {
+        return $null
+    }
+
+    $fields = @(($output -join " ") -split "\s+" | Where-Object { $_.Length -gt 0 })
+    if ($fields.Count -lt 2) {
+        return $null
+    }
+
+    $versionToken = $fields[1]
+    if ($versionToken -notmatch "^([0-9]+)\.([0-9]+)\.([0-9]+)(.*)$") {
+        return $null
+    }
+
+    return @{
+        VersionToken = $versionToken
+        Version = [version]("{0}.{1}.{2}" -f $Matches[1], $Matches[2], $Matches[3])
+        Suffix = $Matches[4]
+    }
+}
+
+function Get-ZolaVersionRelation {
+    param([hashtable]$VersionInfo)
+
+    $minimumVersion = [version]"0.22.1"
+    if ($VersionInfo.Version -lt $minimumVersion) {
+        return "below"
+    }
+    if ($VersionInfo.Version -gt $minimumVersion) {
+        return "newer"
+    }
+    if (-not [string]::IsNullOrEmpty($VersionInfo.Suffix)) {
+        return "below"
+    }
+
+    return "equal"
+}
+
+function Install-PinnedZola {
+    $defaultPaths = Get-DefaultInstallPaths
+    $installedZola = Install-Zola -InstallDir $defaultPaths.InstallDir -ZolaPath $defaultPaths.ZolaPath
+    Move-DirectoryToFrontOfSessionPath -InstallDir $defaultPaths.InstallDir
+
+    return $installedZola
+}
+
+function Initialize-Zola {
+    $zolaPath = Find-ZolaOnPath
+    if ($null -eq $zolaPath) {
+        $defaultPaths = Get-DefaultInstallPaths
+        if (Test-Path -LiteralPath $defaultPaths.ZolaPath -PathType Leaf) {
+            $zolaPath = $defaultPaths.ZolaPath
+            Move-DirectoryToFrontOfSessionPath -InstallDir $defaultPaths.InstallDir
+        }
+    }
+
+    if ($null -eq $zolaPath) {
+        return (Install-PinnedZola)
+    }
+
+    $versionInfo = Get-ZolaVersionInfo -ZolaPath $zolaPath
+    if ($null -eq $versionInfo) {
+        Say "Found zola with unparseable version output. Installing zola 0.22.1."
+        return (Install-PinnedZola)
+    }
+
+    $relation = Get-ZolaVersionRelation -VersionInfo $versionInfo
+    switch ($relation) {
+        "below" {
+            Say ("Found zola {0} below supported 0.22.1. Installing zola 0.22.1." -f $versionInfo.VersionToken)
+            return (Install-PinnedZola)
+        }
+        "equal" {
+            Say ("Using existing zola {0} at {1}" -f $versionInfo.VersionToken, $zolaPath)
+            return $zolaPath
+        }
+        "newer" {
+            Say ("Found zola {0}. build-eips is tested with zola 0.22.1 or newer. Continuing with the installed version." -f $versionInfo.VersionToken)
+            return $zolaPath
+        }
+    }
+}
+
 function Resolve-ActiveRepoRoot {
     param(
         [string]$InvocationDir,
@@ -253,14 +472,16 @@ function Get-DefaultInstallPaths {
 
     $installDir = Join-Path -Path (Join-Path -Path $env:LOCALAPPDATA -ChildPath "build-eips") -ChildPath "bin"
     $buildEipsPath = Join-Path -Path $installDir -ChildPath "build-eips.exe"
+    $zolaPath = Join-Path -Path $installDir -ChildPath "zola.exe"
 
     return @{
         InstallDir = $installDir
         BuildEipsPath = $buildEipsPath
+        ZolaPath = $zolaPath
     }
 }
 
-$PathNote = $null
+$PathNotes = @()
 $WorkspaceFlags = @()
 if ($Template) {
     $WorkspaceFlags += "--template"
@@ -285,13 +506,15 @@ if ($null -ne $BuildEipsPath) {
 
     if (Test-Path -LiteralPath $DefaultBuildEipsPath -PathType Leaf) {
         $BuildEipsPath = $DefaultBuildEipsPath
-        Add-DefaultBinToSessionPath -InstallDir $DefaultInstallDir
+        Move-DirectoryToFrontOfSessionPath -InstallDir $DefaultInstallDir
         Say "Using existing build-eips at $BuildEipsPath"
     } else {
         $BuildEipsPath = Install-BuildEips -InstallDir $DefaultInstallDir -BuildEipsPath $DefaultBuildEipsPath
-        Add-DefaultBinToSessionPath -InstallDir $DefaultInstallDir
+        Move-DirectoryToFrontOfSessionPath -InstallDir $DefaultInstallDir
     }
 }
+
+$ZolaPath = Initialize-Zola
 
 Say "Theme repo: $ThemeRoot"
 Say "Workspace root: $WorkspaceRoot"
@@ -321,11 +544,13 @@ if (Test-Path -LiteralPath $WorkspaceDocPath -PathType Leaf) {
     Say "Warning: workspace docs were not found at $WorkspaceDocPath after workspace init"
 }
 
-if ($null -ne $PathNote) {
+if ($PathNotes.Count -gt 0) {
     Say ""
     Say 'Updated PATH for this PowerShell session only:'
-    Say "  $PathNote"
-    Say "To make this permanent, add that directory to your user Path in Windows Environment Variables."
+    foreach ($pathNote in $PathNotes) {
+        Say "  $pathNote"
+    }
+    Say "To make this permanent, add the listed directory or directories to your user Path in Windows Environment Variables."
 }
 
 Say ""

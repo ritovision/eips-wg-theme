@@ -66,15 +66,69 @@ path_contains_dir() {
     return 1
 }
 
-add_dir_to_script_path() {
+move_dir_to_front_of_script_path() {
     dir=$1
-    if ! path_contains_dir "$dir"; then
-        if [ -n "${PATH:-}" ]; then
-            PATH=$dir:$PATH
-        else
-            PATH=$dir
+    target=$(normalize_dir_for_path_compare "$dir") || return 1
+    new_path=
+    old_ifs=$IFS
+    IFS=:
+    for path_entry in ${PATH:-}; do
+        [ -n "$path_entry" ] || continue
+        candidate=$(normalize_dir_for_path_compare "$path_entry") || continue
+        if [ "$candidate" = "$target" ]; then
+            continue
         fi
-        PATH_NOTE=$dir
+
+        if [ -n "$new_path" ]; then
+            new_path=$new_path:$path_entry
+        else
+            new_path=$path_entry
+        fi
+    done
+    IFS=$old_ifs
+
+    if [ -n "$new_path" ]; then
+        updated_path=$dir:$new_path
+    else
+        updated_path=$dir
+    fi
+
+    if [ "${PATH:-}" != "$updated_path" ]; then
+        PATH=$updated_path
+        add_path_note "$dir"
+    fi
+}
+
+add_path_note() {
+    dir=$1
+    target=$(normalize_dir_for_path_compare "$dir") || return 1
+    old_ifs=$IFS
+    IFS='
+'
+    for path_note in $PATH_NOTES; do
+        candidate=$(normalize_dir_for_path_compare "$path_note") || continue
+        if [ "$candidate" = "$target" ]; then
+            IFS=$old_ifs
+            return 0
+        fi
+    done
+    IFS=$old_ifs
+
+    case "
+$PATH_NOTES
+" in
+        *"
+$dir
+"*)
+            return 0
+            ;;
+    esac
+
+    if [ -n "$PATH_NOTES" ]; then
+        PATH_NOTES=$PATH_NOTES'
+'$dir
+    else
+        PATH_NOTES=$dir
     fi
 }
 
@@ -198,6 +252,15 @@ verify_archive_checksum() {
     [ "$actual_hash" = "$expected_hash" ] || die "checksum mismatch for $archive_name"
 }
 
+verify_file_hash() {
+    archive_path=$1
+    expected_hash=$2
+    archive_name=$3
+
+    actual_hash=$(file_sha256 "$archive_path")
+    [ "$actual_hash" = "$expected_hash" ] || die "checksum mismatch for $archive_name"
+}
+
 cleanup_tmpdir() {
     if [ -n "${INSTALL_TMP_TO_CLEAN:-}" ]; then
         rm -f "$INSTALL_TMP_TO_CLEAN"
@@ -228,7 +291,7 @@ ensure_install_dir() {
     [ -n "${INSTALL_DIR:-}" ] && return 0
 
     INSTALL_DIR=$(pick_install_dir) || die "could not find a writable install directory"
-    add_dir_to_script_path "$INSTALL_DIR"
+    move_dir_to_front_of_script_path "$INSTALL_DIR"
 }
 
 install_build_eips() {
@@ -275,6 +338,181 @@ install_build_eips() {
     clear_cleanup_traps
 }
 
+unsupported_zola_platform() {
+    os=$1
+    arch=$2
+    die "Unsupported platform $os/$arch for automatic Zola install. Install Zola 0.22.1 manually from https://github.com/getzola/zola/releases and ensure it is on PATH."
+}
+
+is_linux_musl() {
+    if command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; then
+        return 0
+    fi
+
+    set -- /lib/ld-musl-*.so.1
+    [ -e "$1" ]
+}
+
+select_zola_release() {
+    os=$(uname -s)
+    arch=$(uname -m)
+
+    case "$os" in
+        Linux)
+            if is_linux_musl; then
+                case "$arch" in
+                    x86_64)
+                        ZOLA_ARCHIVE_NAME=zola-v0.22.1-x86_64-unknown-linux-musl.tar.gz
+                        ZOLA_ARCHIVE_HASH=227df99b664421240a8ba77747067c51259b08159125d5603763b3b173b9a881
+                        ;;
+                    *)
+                        unsupported_zola_platform "$os" "$arch"
+                        ;;
+                esac
+            else
+                case "$arch" in
+                    x86_64)
+                        ZOLA_ARCHIVE_NAME=zola-v0.22.1-x86_64-unknown-linux-gnu.tar.gz
+                        ZOLA_ARCHIVE_HASH=0ca09aa40376aaa9ddfb512ff9ad963262ef95edb0d0f2d5ec6961b6f5cf22ef
+                        ;;
+                    aarch64|arm64)
+                        ZOLA_ARCHIVE_NAME=zola-v0.22.1-aarch64-unknown-linux-gnu.tar.gz
+                        ZOLA_ARCHIVE_HASH=8af437ec6352f33ccd24d7a1cfcb54a3db95d3ce376dc69525b4ef3fb6b8c1d1
+                        ;;
+                    *)
+                        unsupported_zola_platform "$os" "$arch"
+                        ;;
+                esac
+            fi
+            ;;
+        Darwin)
+            case "$arch" in
+                x86_64)
+                    ZOLA_ARCHIVE_NAME=zola-v0.22.1-x86_64-apple-darwin.tar.gz
+                    ZOLA_ARCHIVE_HASH=3898709e154ae0593933264a540c869348bdb10d7f1b03a42dfb78d63703b3b5
+                    ;;
+                arm64|aarch64)
+                    ZOLA_ARCHIVE_NAME=zola-v0.22.1-aarch64-apple-darwin.tar.gz
+                    ZOLA_ARCHIVE_HASH=46ac45a9e7628dba8593b124ee8794f4f9aa1c6b569918ecd4bbc5d0be190515
+                    ;;
+                *)
+                    unsupported_zola_platform "$os" "$arch"
+                    ;;
+            esac
+            ;;
+        *)
+            unsupported_zola_platform "$os" "$arch"
+            ;;
+    esac
+}
+
+parse_zola_version() {
+    output=$1
+
+    set -f
+    set -- $output
+    set +f
+    [ "$#" -ge 2 ] || return 1
+
+    ZOLA_FOUND_VERSION=$2
+    version_core=$(printf '%s\n' "$ZOLA_FOUND_VERSION" | sed -n 's/^\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2 \3/p')
+    [ -n "$version_core" ] || return 1
+
+    set -- $version_core
+    ZOLA_VERSION_MAJOR=$1
+    ZOLA_VERSION_MINOR=$2
+    ZOLA_VERSION_PATCH=$3
+    ZOLA_VERSION_SUFFIX=$(printf '%s\n' "$ZOLA_FOUND_VERSION" | sed -n 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//p')
+
+    return 0
+}
+
+zola_version_relation() {
+    if [ "$ZOLA_VERSION_MAJOR" -lt 0 ]; then
+        printf '%s\n' below
+    elif [ "$ZOLA_VERSION_MAJOR" -gt 0 ]; then
+        printf '%s\n' newer
+    elif [ "$ZOLA_VERSION_MINOR" -lt 22 ]; then
+        printf '%s\n' below
+    elif [ "$ZOLA_VERSION_MINOR" -gt 22 ]; then
+        printf '%s\n' newer
+    elif [ "$ZOLA_VERSION_PATCH" -lt 1 ]; then
+        printf '%s\n' below
+    elif [ "$ZOLA_VERSION_PATCH" -gt 1 ]; then
+        printf '%s\n' newer
+    elif [ -n "$ZOLA_VERSION_SUFFIX" ]; then
+        printf '%s\n' below
+    else
+        printf '%s\n' equal
+    fi
+}
+
+install_zola() {
+    command -v tar >/dev/null 2>&1 || die "need tar to unpack the zola release archive"
+    select_zola_release
+    ensure_install_dir
+
+    tmpdir=$(mktemp -d)
+    TMPDIR_TO_CLEAN=$tmpdir
+    set_cleanup_traps
+
+    archive_path=$tmpdir/$ZOLA_ARCHIVE_NAME
+    release_base_url=https://github.com/getzola/zola/releases/download/v0.22.1
+
+    say "Installing zola 0.22.1 from $release_base_url/$ZOLA_ARCHIVE_NAME"
+    download "$release_base_url/$ZOLA_ARCHIVE_NAME" "$archive_path"
+    verify_file_hash "$archive_path" "$ZOLA_ARCHIVE_HASH" "$ZOLA_ARCHIVE_NAME"
+
+    tar -xzf "$archive_path" -C "$tmpdir"
+    [ -f "$tmpdir/zola" ] || die "zola release archive did not contain zola"
+
+    install_tmp=$(mktemp "$INSTALL_DIR/.zola.XXXXXX") || die "could not create temporary zola install file in $INSTALL_DIR"
+    INSTALL_TMP_TO_CLEAN=$install_tmp
+    cp "$tmpdir/zola" "$install_tmp"
+    chmod +x "$install_tmp"
+    mv "$install_tmp" "$INSTALL_DIR/zola"
+    INSTALL_TMP_TO_CLEAN=
+
+    ZOLA=$INSTALL_DIR/zola
+    cleanup_tmpdir
+    clear_cleanup_traps
+}
+
+ensure_zola() {
+    if command -v zola >/dev/null 2>&1; then
+        ZOLA=$(command -v zola)
+    elif [ -n "${HOME:-}" ] && [ -x "$HOME/.local/bin/zola" ]; then
+        INSTALL_DIR=$HOME/.local/bin
+        ZOLA=$INSTALL_DIR/zola
+        move_dir_to_front_of_script_path "$INSTALL_DIR"
+    else
+        install_zola
+        return 0
+    fi
+
+    if [ -n "${ZOLA:-}" ]; then
+        zola_output=$("$ZOLA" --version 2>/dev/null || true)
+        if parse_zola_version "$zola_output"; then
+            relation=$(zola_version_relation)
+            case "$relation" in
+                below)
+                    say "Found zola $ZOLA_FOUND_VERSION below supported 0.22.1. Installing zola 0.22.1."
+                    install_zola
+                    ;;
+                equal)
+                    say "Using existing zola $ZOLA_FOUND_VERSION at $ZOLA"
+                    ;;
+                newer)
+                    say "Found zola $ZOLA_FOUND_VERSION. build-eips is tested with zola 0.22.1 or newer. Continuing with the installed version."
+                    ;;
+            esac
+        else
+            say "Found zola with unparseable version output. Installing zola 0.22.1."
+            install_zola
+        fi
+    fi
+}
+
 WORKSPACE_FLAGS=
 
 while [ "$#" -gt 0 ]; do
@@ -298,7 +536,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 THEME_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 WORKSPACE_ROOT=$(CDPATH= cd -- "$THEME_ROOT/.." && pwd)
 INSTALL_DIR=
-PATH_NOTE=
+PATH_NOTES=
 TMPDIR_TO_CLEAN=
 INSTALL_TMP_TO_CLEAN=
 
@@ -321,11 +559,14 @@ if command -v build-eips >/dev/null 2>&1; then
     say "Using existing build-eips at $BUILD_EIPS"
 elif [ -n "${HOME:-}" ] && [ -x "$HOME/.local/bin/build-eips" ]; then
     BUILD_EIPS=$HOME/.local/bin/build-eips
-    add_dir_to_script_path "$HOME/.local/bin"
+    INSTALL_DIR=$HOME/.local/bin
+    move_dir_to_front_of_script_path "$INSTALL_DIR"
     say "Using existing build-eips at $BUILD_EIPS"
 else
     install_build_eips
 fi
+
+ensure_zola
 
 say "Theme repo: $THEME_ROOT"
 say "Workspace root: $WORKSPACE_ROOT"
@@ -349,12 +590,20 @@ else
     say "Warning: workspace docs were not found at $WORKSPACE_DOC after workspace init"
 fi
 
-if [ -n "$PATH_NOTE" ]; then
+if [ -n "$PATH_NOTES" ]; then
     say ""
     say "Updated PATH for this script process only:"
-    say "  $PATH_NOTE"
+    old_ifs=$IFS
+    IFS='
+'
+    for path_note in $PATH_NOTES; do
+        say "  $path_note"
+    done
     say "To make this permanent in your shell, add:"
-    say "  export PATH=$(shell_quote "$PATH_NOTE"):\$PATH"
+    for path_note in $PATH_NOTES; do
+        say "  export PATH=$(shell_quote "$path_note"):\$PATH"
+    done
+    IFS=$old_ifs
 fi
 
 say ""
