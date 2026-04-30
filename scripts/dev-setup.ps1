@@ -18,7 +18,7 @@ function Die {
     throw "error: $Message"
 }
 
-function Normalize-DirectoryForPathCompare {
+function ConvertTo-NormalizedDirectoryPath {
     param([string]$Directory)
 
     $trimmed = $Directory.Trim('"')
@@ -38,13 +38,13 @@ function Test-DirectoryOnPath {
         return $false
     }
 
-    $target = Normalize-DirectoryForPathCompare -Directory $Directory
+    $target = ConvertTo-NormalizedDirectoryPath -Directory $Directory
     foreach ($entry in ($env:Path -split ";")) {
         if ([string]::IsNullOrWhiteSpace($entry)) {
             continue
         }
 
-        $candidate = Normalize-DirectoryForPathCompare -Directory $entry
+        $candidate = ConvertTo-NormalizedDirectoryPath -Directory $entry
         if ([string]::Equals($candidate, $target, [System.StringComparison]::OrdinalIgnoreCase)) {
             return $true
         }
@@ -99,15 +99,81 @@ function Assert-InstallDirWritable {
     }
 }
 
+function Invoke-ReleaseDownload {
+    param(
+        [string]$Url,
+        [string]$Destination
+    )
+
+    $previousProgressPreference = $ProgressPreference
+    $ProgressPreference = "SilentlyContinue"
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing
+    } catch {
+        Die ("failed to download {0}: {1}" -f $Url, $_.Exception.Message)
+    } finally {
+        $ProgressPreference = $previousProgressPreference
+    }
+}
+
+function Test-AsciiHexHash {
+    param([string]$Hash)
+
+    return $Hash -match "^[0-9a-fA-F]{64}$"
+}
+
+function Assert-ArchiveChecksum {
+    param(
+        [string]$ArchivePath,
+        [string]$SidecarPath,
+        [string]$ArchiveName
+    )
+
+    if (-not (Test-Path -LiteralPath $SidecarPath -PathType Leaf)) {
+        Die "missing checksum sidecar: $SidecarPath"
+    }
+
+    $sidecarText = [System.IO.File]::ReadAllText($SidecarPath)
+    $checksumLines = @($sidecarText -split "\r?\n" | Where-Object { $_.Trim().Length -gt 0 })
+    if ($checksumLines.Count -ne 1) {
+        Die "checksum sidecar must contain exactly one checksum line"
+    }
+
+    $fields = @($checksumLines[0].Trim() -split "\s+")
+    if ($fields.Count -ne 2) {
+        Die "checksum sidecar must contain only a hash and archive filename"
+    }
+
+    $expectedHash = $fields[0].ToLowerInvariant()
+    $expectedName = $fields[1]
+
+    if (-not (Test-AsciiHexHash -Hash $expectedHash)) {
+        Die "checksum sidecar hash must be 64 hex characters"
+    }
+    if ($expectedName -match '[/\\]') {
+        Die "checksum sidecar filename must be a basename"
+    }
+    if ($expectedName -ne $ArchiveName) {
+        Die ("checksum sidecar filename '{0}' does not match '{1}'" -f $expectedName, $ArchiveName)
+    }
+
+    $actualHash = (Get-FileHash -Algorithm SHA256 -Path $ArchivePath).Hash.ToLowerInvariant()
+    if ($actualHash -ne $expectedHash) {
+        Die "checksum mismatch for $ArchiveName"
+    }
+}
+
 function Install-BuildEips {
     param(
         [string]$InstallDir,
         [string]$BuildEipsPath
     )
 
-    $releaseUrl = "https://github.com/eips-wg/preprocessor/releases/latest/download/build-eips-windows.zip"
+    $archiveName = "build-eips-windows.zip"
+    $releaseBaseUrl = "https://github.com/eips-wg/preprocessor/releases/latest/download"
     $tmpRoot = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("build-eips-" + [System.Guid]::NewGuid().ToString("N"))
-    $archivePath = Join-Path -Path $tmpRoot -ChildPath "build-eips-windows.zip"
+    $archivePath = Join-Path -Path $tmpRoot -ChildPath $archiveName
+    $sidecarPath = Join-Path -Path $tmpRoot -ChildPath "$archiveName.sha256"
     $extractDir = Join-Path -Path $tmpRoot -ChildPath "extract"
 
     try {
@@ -117,8 +183,11 @@ function Install-BuildEips {
 
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-        Say "Installing build-eips from $releaseUrl"
-        Invoke-WebRequest -Uri $releaseUrl -OutFile $archivePath -UseBasicParsing
+        Say "Installing build-eips from $releaseBaseUrl/$archiveName"
+        Invoke-ReleaseDownload -Url "$releaseBaseUrl/$archiveName" -Destination $archivePath
+        Invoke-ReleaseDownload -Url "$releaseBaseUrl/$archiveName.sha256" -Destination $sidecarPath
+        Assert-ArchiveChecksum -ArchivePath $archivePath -SidecarPath $sidecarPath -ArchiveName $archiveName
+
         Expand-Archive -LiteralPath $archivePath -DestinationPath $extractDir -Force
 
         $extractedBuildEips = Join-Path -Path $extractDir -ChildPath "build-eips.exe"
@@ -126,7 +195,12 @@ function Install-BuildEips {
             Die "release archive did not contain expected build-eips.exe"
         }
 
-        Copy-Item -LiteralPath $extractedBuildEips -Destination $BuildEipsPath -Force
+        try {
+            Move-Item -LiteralPath $extractedBuildEips -Destination $BuildEipsPath -Force
+        } catch {
+            Die ("build-eips.exe is in use. Close any running build-eips process and re-run this script. Details: {0}" -f $_.Exception.Message)
+        }
+
         return $BuildEipsPath
     } catch {
         Die ("failed to install build-eips: {0}" -f $_.Exception.Message)
@@ -166,7 +240,7 @@ function Resolve-ActiveRepoRoot {
     return $resolved
 }
 
-function Quote-PowerShellPath {
+function ConvertTo-PowerShellQuotedPath {
     param([string]$Path)
 
     return "'{0}'" -f ($Path -replace "'", "''")
@@ -201,12 +275,6 @@ $ThemeRoot = (Resolve-Path -LiteralPath (Split-Path -Path $ScriptDir -Parent)).P
 $WorkspaceRoot = (Resolve-Path -LiteralPath (Split-Path -Path $ThemeRoot -Parent)).ProviderPath
 $ActiveRepoRoot = Resolve-ActiveRepoRoot -InvocationDir $InvocationDir -WorkspaceRoot $WorkspaceRoot
 
-Say "Theme repo: $ThemeRoot"
-Say "Workspace root: $WorkspaceRoot"
-Say "Active proposal repo: $ActiveRepoRoot"
-Say "If PowerShell blocks this script, run:"
-Say "  powershell -ExecutionPolicy Bypass -File .\scripts\dev-setup.ps1"
-
 $BuildEipsPath = Find-BuildEipsOnPath
 if ($null -ne $BuildEipsPath) {
     Say "Using existing build-eips at $BuildEipsPath"
@@ -225,6 +293,12 @@ if ($null -ne $BuildEipsPath) {
     }
 }
 
+Say "Theme repo: $ThemeRoot"
+Say "Workspace root: $WorkspaceRoot"
+Say "Active proposal repo: $ActiveRepoRoot"
+Say "If PowerShell blocks this script, run:"
+Say "  powershell -ExecutionPolicy Bypass -File .\scripts\dev-setup.ps1"
+
 Say "Bootstrapping workspace at $WorkspaceRoot"
 & $BuildEipsPath -C $ActiveRepoRoot workspace init $WorkspaceRoot @WorkspaceFlags
 $WorkspaceInitExitCode = $LASTEXITCODE
@@ -239,16 +313,24 @@ if ($WorkspaceDoctorExitCode -ne 0) {
     Say "Warning: workspace doctor reported issues above. Fix them before relying on direct build-eips commands."
 }
 
+$WorkspaceDocPath = Join-Path -Path $WorkspaceRoot -ChildPath "WORKSPACE.md"
+Say ""
+if (Test-Path -LiteralPath $WorkspaceDocPath -PathType Leaf) {
+    Say "Workspace docs: $WorkspaceDocPath (../WORKSPACE.md from this repo)"
+} else {
+    Say "Warning: workspace docs were not found at $WorkspaceDocPath after workspace init"
+}
+
 if ($null -ne $PathNote) {
     Say ""
-    Say 'Current session $env:Path was updated with:'
+    Say 'Updated PATH for this PowerShell session only:'
     Say "  $PathNote"
     Say "To make this permanent, add that directory to your user Path in Windows Environment Variables."
 }
 
 Say ""
 Say "Next commands:"
-Say ("  cd {0}" -f (Quote-PowerShellPath -Path $ThemeRoot))
-Say ("  build-eips -C {0} serve" -f (Quote-PowerShellPath -Path $ActiveRepoRoot))
-Say ("  build-eips -C {0} check" -f (Quote-PowerShellPath -Path $ActiveRepoRoot))
-Say ("  build-eips -C {0} workspace doctor" -f (Quote-PowerShellPath -Path $ActiveRepoRoot))
+Say ("  cd {0}" -f (ConvertTo-PowerShellQuotedPath -Path $ThemeRoot))
+Say ("  build-eips -C {0} serve" -f (ConvertTo-PowerShellQuotedPath -Path $ActiveRepoRoot))
+Say ("  build-eips -C {0} check" -f (ConvertTo-PowerShellQuotedPath -Path $ActiveRepoRoot))
+Say ("  build-eips -C {0} workspace doctor" -f (ConvertTo-PowerShellQuotedPath -Path $ActiveRepoRoot))
