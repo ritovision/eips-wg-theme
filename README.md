@@ -30,7 +30,7 @@ Windows PowerShell:
 .\scripts\dev-setup.ps1
 ```
 
-The setup script initializes the workspace one directory above this repo, runs `workspace doctor`, and prints the next local commands.
+The setup script initializes the workspace one directory above this repo, runs `build-eips doctor`, and prints the next local commands.
 
 After setup, the generated workspace guide is available at `../WORKSPACE.md`. Use that file for the full command reference and workspace details.
 
@@ -55,7 +55,7 @@ ACTIVE_REPO_ROOT=../ERCs ./scripts/dev-setup
 Validate the workspace at any point with:
 
 ```sh
-build-eips -C ../EIPs workspace doctor
+build-eips -C ../EIPs doctor
 ```
 
 ### Advanced Setup Options
@@ -75,7 +75,7 @@ After setup, run local site commands against the active proposal repo:
 ```sh
 build-eips -C ../EIPs check
 build-eips -C ../EIPs serve
-build-eips -C ../EIPs workspace doctor
+build-eips -C ../EIPs doctor
 ```
 
 ### Serve And Preview
@@ -126,7 +126,7 @@ CLI `--only` replaces `[render].only` for that run. For edge cases and exact fil
 
 Workspace-local sources come from the standard workspace layout. The local theme is `workspace/theme`, and local sibling repos are `workspace/<sibling_repo_id>` from the active repo manifest.
 
-Use `--remote-sibling-repo` when you need to force remote sibling proposal sources for a single command.
+Use `--remote-siblings` when you need to force remote sibling proposal sources for a single command.
 
 Use global `--build-root <path>` when you want a separate prepared repo and output directory, for example to compare two builds side by side. The path replaces the default `.local-build/<repo_id>` location for each command where you pass it, so use the same `--build-root` value when serving or previewing builds.
 

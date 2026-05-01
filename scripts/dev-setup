@@ -540,7 +540,7 @@ PATH_NOTES=
 TMPDIR_TO_CLEAN=
 INSTALL_TMP_TO_CLEAN=
 
-# Theme is not an active proposal repo, so workspace init is anchored through a
+# Theme is not an active proposal repo, so build-eips init is anchored through a
 # sibling proposal repo. Default to EIPs and allow ERCs/custom layouts via env.
 if [ -n "${ACTIVE_REPO_ROOT:-}" ]; then
     ACTIVE_REPO_ROOT=$(absolute_path "$ACTIVE_REPO_ROOT")
@@ -573,13 +573,13 @@ say "Workspace root: $WORKSPACE_ROOT"
 say "Active proposal repo: $ACTIVE_REPO_ROOT"
 
 say "Bootstrapping workspace at $WORKSPACE_ROOT"
-if ! "$BUILD_EIPS" -C "$ACTIVE_REPO_ROOT" workspace init "$WORKSPACE_ROOT" $WORKSPACE_FLAGS; then
-    die "workspace init failed"
+if ! "$BUILD_EIPS" -C "$ACTIVE_REPO_ROOT" init "$WORKSPACE_ROOT" $WORKSPACE_FLAGS; then
+    die "build-eips init failed"
 fi
 
-say "Running workspace doctor"
-if ! "$BUILD_EIPS" -C "$ACTIVE_REPO_ROOT" workspace doctor; then
-    say "Warning: workspace doctor reported issues above. Fix them before relying on direct build-eips commands."
+say "Running build-eips doctor"
+if ! "$BUILD_EIPS" -C "$ACTIVE_REPO_ROOT" doctor; then
+    say "Warning: build-eips doctor reported issues above. Fix them before relying on direct build-eips commands."
 fi
 
 WORKSPACE_DOC=$WORKSPACE_ROOT/WORKSPACE.md
@@ -587,7 +587,7 @@ say ""
 if [ -f "$WORKSPACE_DOC" ]; then
     say "Workspace docs: $WORKSPACE_DOC (../WORKSPACE.md from this repo)"
 else
-    say "Warning: workspace docs were not found at $WORKSPACE_DOC after workspace init"
+    say "Warning: workspace docs were not found at $WORKSPACE_DOC after build-eips init"
 fi
 
 if [ -n "$PATH_NOTES" ]; then
@@ -611,4 +611,4 @@ say "Next commands:"
 say "  cd $(shell_quote "$THEME_ROOT")"
 say "  build-eips -C $(shell_quote "$ACTIVE_REPO_ROOT") serve"
 say "  build-eips -C $(shell_quote "$ACTIVE_REPO_ROOT") check"
-say "  build-eips -C $(shell_quote "$ACTIVE_REPO_ROOT") workspace doctor"
+say "  build-eips -C $(shell_quote "$ACTIVE_REPO_ROOT") doctor"
