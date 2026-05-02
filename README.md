@@ -46,7 +46,7 @@ EIPs-project/
 └── theme/
 ```
 
-The theme repo is not itself an active proposal repo, so the script anchors workspace setup through a sibling proposal checkout. By default it uses `../EIPs`; override that with `ACTIVE_REPO_ROOT` when needed:
+The script anchors setup through `../EIPs` by default and clones `https://github.com/ethereum/EIPs.git` there when that checkout is missing. Set `ACTIVE_REPO_ROOT` to use another proposal repo checkout:
 
 ```sh
 ACTIVE_REPO_ROOT=../ERCs ./scripts/dev-setup
