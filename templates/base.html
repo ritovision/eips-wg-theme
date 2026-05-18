@@ -1,3 +1,7 @@
+{%- set_global build_eips_search = load_data(path="data/build_eips_search.toml", required=false) -%}
+{%- if not build_eips_search -%}
+{%- set_global build_eips_search = config.extra.search -%}
+{%- endif -%}
 <!doctype html>
 <html lang="{{ lang }}">
 	<head
@@ -203,7 +207,7 @@
 							</a>
 							{% endfor %}
 							{% endif %}
-							<a class="page-link nav-ui-search-link" id="search" href="#" aria-label="Search">
+							<a class="page-link nav-ui-search-link" id="search" href="{{ build_eips_search.base_path }}search/" aria-label="Search">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 									<circle cx="11" cy="11" r="7"></circle>
 									<path d="M20 20l-3.5-3.5"></path>
