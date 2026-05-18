@@ -100,6 +100,10 @@
 			rel="stylesheet"
 			href="{{ get_url(path='/assets/css/override.css', trailing_slash=false) }}"
 		/>
+		<link
+			rel="stylesheet"
+			href="{{ get_url(path='/assets/css/search.css', trailing_slash=false) }}"
+		/>
 		<script
 			src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"
 			integrity="sha384-oBqDVmMz9ATKxIep9tiCxS/Z9fNfEXiDAYTujMAeBAsjFuCZSmKbSSUnQlmh/jp3"
@@ -147,6 +151,7 @@
 			integrity="sha384-/1zmJ1mBdfKIOnwPxpdG6yaRrxP6qu3eVYm0cz2nOx+AcL4d3AqEFrwcqGZVVroG"
 			crossorigin="anonymous"
 		></script>
+		<script type="application/json" id="build-eips-global-search-config">{{ build_eips_search | json_encode | safe }}</script>
 		<script defer async src="{{ get_url(path='/assets/scripts/search.mjs', trailing_slash=false) }}" type="module"></script>
 		<script defer src="{{ get_url(path='/assets/scripts/copy-code.mjs', trailing_slash=false) }}" type="module"></script>
 		<script defer src="{{ get_url(path='/assets/scripts/nav-ui.mjs', trailing_slash=false) }}" type="module"></script>
@@ -207,7 +212,7 @@
 							</a>
 							{% endfor %}
 							{% endif %}
-							<a class="page-link nav-ui-search-link" id="search" href="{{ build_eips_search.base_path }}search/" aria-label="Search">
+							<a class="page-link nav-ui-search-link" id="search" href="{{ build_eips_search.base_path }}search/" data-search-trigger aria-label="Search">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 									<circle cx="11" cy="11" r="7"></circle>
 									<path d="M20 20l-3.5-3.5"></path>
