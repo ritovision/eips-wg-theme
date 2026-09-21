@@ -154,15 +154,15 @@
 						<span>
 							{% if config.extra.banner_taxonomies %}
 							{% for pair in config.extra.banner_taxonomies %}
-							{% set taxonomy_detail = get_taxonomy(kind=pair.name) %}
-							<a class="page-link col" href="{{ taxonomy_detail.permalink }}">
+							{% set taxonomy_detail = get_taxonomy(kind=pair.name) | get(key="permalink") %}
+							<a class="page-link col" href="{{ taxonomy_detail }}">
 								{{ pair.label }}
 							</a>
 							{% endfor %}
 							{% else %}
 							{% for taxonomy in config.taxonomies %}
-							{% set taxonomy_detail = get_taxonomy(kind=taxonomy.name) %}
-							<a class="page-link col" href="{{ taxonomy_detail.permalink }}">
+							{% set taxonomy_detail = get_taxonomy(kind=taxonomy.name) | get(key="permalink") %}
+							<a class="page-link col" href="{{ taxonomy_detail }}">
 								{{- taxonomy.name | title -}}
 							</a>
 							{% endfor %}

@@ -1,5 +1,20 @@
 {% import "macros.html" as macros %}
 
+{# Retain scalar URLs, not page-bearing taxonomy objects, in feed context.
+   Resolve only kinds actually used by this feed, using Zola's native URL and
+   missing-taxonomy semantics. Do not construct routes from taxonomy names. #}
+{%- set_global feed_taxonomy_names = [] -%}
+{%- set_global feed_taxonomy_urls = [] -%}
+{%- for feed_page in pages -%}
+    {%- for name, terms in feed_page.taxonomies -%}
+        {%- if terms and name not in feed_taxonomy_names -%}
+            {%- set native_url = get_taxonomy(kind=name, required=true) | get(key="permalink") -%}
+            {%- set_global feed_taxonomy_names = feed_taxonomy_names | concat(with=name) -%}
+            {%- set_global feed_taxonomy_urls = feed_taxonomy_urls | concat(with=native_url) -%}
+        {%- endif -%}
+    {%- endfor -%}
+{%- endfor -%}
+
 <?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xml:lang="{{ lang }}">
     <title>{{ config.title }}
@@ -63,12 +78,17 @@
 
         <id>{{ page.permalink | safe }}</id>
         {% for taxonomy, terms in page.taxonomies %}
+            {% set_global taxonomy_url = "" %}
+            {% for name in feed_taxonomy_names %}
+                {% if name == taxonomy %}
+                    {% set_global taxonomy_url = feed_taxonomy_urls[loop.index0] %}
+                {% endif %}
+            {% endfor %}
             {% for term in terms | sort %}
-            {% set taxonomy_obj = get_taxonomy(kind=taxonomy, required=true) %}
-            {% set term_obj = get_taxonomy_term(kind=taxonomy, term=term, required=true, include_pages=false) %}
+            {% set term_slug = get_taxonomy_term(kind=taxonomy, term=term, required=true, include_pages=false) | get(key="slug") %}
             <category
-                scheme="{{ taxonomy_obj.permalink }}"
-                term="{{ term_obj.slug }}"
+                scheme="{{ taxonomy_url }}"
+                term="{{ term_slug }}"
                 label="{{ term | escape_xml | safe }}" />
             {% endfor %}
         {% endfor %}
