@@ -65,7 +65,7 @@
         {% for taxonomy, terms in page.taxonomies %}
             {% for term in terms | sort %}
             {% set taxonomy_obj = get_taxonomy(kind=taxonomy, required=true) %}
-            {% set term_obj = get_taxonomy_term(kind=taxonomy, term=term, required=true) %}
+            {% set term_obj = get_taxonomy_term(kind=taxonomy, term=term, required=true, include_pages=false) %}
             <category
                 scheme="{{ taxonomy_obj.permalink }}"
                 term="{{ term_obj.slug }}"
