@@ -93,13 +93,13 @@ Local serving keeps two distinct modes:
 
 It also watches tracked edits under `theme/` in the workspace. Theme changes can take longer to apply because they affect the whole rendered site. During `serve`, staging a new theme file with `git add` triggers a theme rescan; no extra file edit or restart should be needed.
 
-`serve --clean` ignores active-repo dirty edits but still watches the local theme.
+`serve --clean` requires the active proposal checkout to be clean at startup and disables active-source synchronization. It still uses and watches the editable local theme; it does not reset or freeze the theme.
 
 `build-eips preview` serves the resolved output directory for the active repo without invoking Zola, preprocessing markdown, or rebuilding anything. If the output directory does not exist yet, it fails and tells you to run `build-eips build` first.
 
 ### Local Server And Base URL
 
-The `[server]` table in `.build-eips.toml` controls the local bind address for both `serve` and `preview`; the default is `127.0.0.1:1111`. Per-command `--host` and `--port` flags override `.build-eips.toml` for one run. These settings do not change build base URLs.
+The `[server]` table in `.build-eips.toml` controls the local bind address for both `serve` and `preview`; the default is `127.0.0.1:1111`. Per-command `--interface` and `--port` flags override `.build-eips.toml` for one run. These settings do not change build base URLs.
 
 The `[site].base_url` value in `.build-eips.toml` is the default local rendered site URL. Starter `.build-eips.toml` files set it to `http://127.0.0.1:1111`. If you change `[server].port`, update `[site].base_url` too when generated links should match the local server.
 
