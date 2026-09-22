@@ -2,7 +2,7 @@ import { QUICK_RESULT_LIMIT } from "./constants.mjs";
 import { searchConfig, searchPath } from "./config.mjs";
 import { createElement, clearElement, setStatus } from "./dom.mjs";
 import { debouncedPagefindSearch } from "./loader.mjs";
-import { renderResultList } from "./render.mjs";
+import { loadResultData, renderResultDataList } from "./render.mjs";
 
 let quickSearchRequestId = 0;
 
@@ -50,15 +50,13 @@ const runQuickSearch = async (query) => {
             return;
         }
 
-        const rendered = await renderResultList(
-            response.results,
-            quickSearch.results,
-            QUICK_RESULT_LIMIT,
-            true,
-        );
+        const data = await loadResultData(response.results.slice(0, QUICK_RESULT_LIMIT));
+        // Loading result fragments is asynchronous too. Check before touching the DOM.
         if (requestId !== quickSearchRequestId) {
             return;
         }
+        renderResultDataList(data, quickSearch.results, true);
+        const rendered = data.length;
         setStatus(
             quickSearch.status,
             response.results.length > rendered
@@ -76,6 +74,7 @@ const runQuickSearch = async (query) => {
 };
 
 const closeQuickSearch = () => {
+    ++quickSearchRequestId;
     if (!quickSearch.modal) {
         return;
     }
@@ -154,6 +153,7 @@ const openQuickSearch = () => {
         return;
     }
 
+    ++quickSearchRequestId;
     ensureQuickSearchModal();
     quickSearch.modal.hidden = false;
     document.body.classList.add("search-modal-open");

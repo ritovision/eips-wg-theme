@@ -5,7 +5,8 @@ import {
     searchStatePath,
 } from "./state.mjs";
 
-const STORAGE_KEY = "eips.search";
+// localStorage already isolates origins; the search route isolates deployments.
+const STORAGE_KEY = `eips.search:${searchPath()}`;
 const STORAGE_VERSION = 1;
 const STORAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const URI_SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/;

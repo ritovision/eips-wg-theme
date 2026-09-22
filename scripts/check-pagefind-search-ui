@@ -361,7 +361,7 @@ assert_contains "$search_loader" "excerptLength: 45" "loader module must configu
 assert_contains "$search_loader" "pagefind.init()" "loader module must initialize Pagefind once through the shared loader"
 assert_contains "$search_loader" "pagefind.filters()" "loader module must expose Pagefind filter loading"
 assert_contains "$search_loader" "pagefind.search(query, searchOptions)" "loader module must own Pagefind search execution"
-assert_contains "$search_storage" 'STORAGE_KEY = "eips.search"' "storage module must own the eips.search key"
+assert_contains "$search_storage" 'STORAGE_KEY = `eips.search:${searchPath()}`' "storage module must namespace the key by search route"
 assert_contains "$search_storage" "version: STORAGE_VERSION" "storage module must write the versioned envelope"
 assert_contains "$search_storage" "lastUrl: canonicalUrl" "storage module must write only the canonical relative URL"
 assert_contains "$search_storage" "updatedAt: updatedAt.toISOString()" "storage module must write updatedAt as an ISO timestamp"
@@ -543,7 +543,7 @@ const availableFilters = {
   author: { Alice: 3, Bob: 2 },
   created_year: { "2021": 2, "2022": 2, "2023": 1, "2024": 1 },
 };
-const storageKey = "eips.search";
+const storageKey = "eips.search:/EIPs/search/";
 
 const resetStorage = (value) => {
   storedValues.clear();
