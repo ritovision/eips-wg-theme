@@ -148,12 +148,24 @@
   }
 
   function targetFromUrl(url) {
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return null;
+    }
     const publicPrefix = proposalPrefixForPublicHost(url.hostname);
-    const path = publicPrefix
-      ? url.pathname
-      : stripLocalBasePath(url.pathname, url.origin);
+    const isLocal =
+      url.origin === window.location.origin &&
+      (localBasePath === "/" || url.pathname.startsWith(localBasePath));
+    if (!isLocal && !publicPrefix) {
+      return null;
+    }
+    const path = isLocal
+      ? stripLocalBasePath(url.pathname, url.origin)
+      : url.pathname;
     const explicitRoute = explicitRouteTarget(path);
     if (explicitRoute) {
+      if (publicPrefix && !explicitRoute.key.startsWith(`${publicPrefix.toLowerCase()}-`)) {
+        return null;
+      }
       return explicitRoute;
     }
 
@@ -203,6 +215,9 @@
     }
 
     const routePrefix = match[1].toUpperCase() === "ERCS" ? "ERC" : "EIP";
+    if (match[2].toUpperCase() !== routePrefix) {
+      return null;
+    }
     return { key: metadataKey(routePrefix, Number(match[3])) };
   }
 

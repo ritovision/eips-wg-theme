@@ -107,3 +107,42 @@ for (const action of ['clear', 'reopen', 'close']) {
 }
 console.log('PASS quick search: deferred older data cannot overwrite newer results, empty query, or reopened/closed modal');
 
+const popovers = await readFile(resolve(scripts, 'proposal-popovers.js'), 'utf8');
+let count = 0;
+for (const base of ['/', '/EIPs/', '/ERCs/', '/wg/review/ERCs/']) {
+    const origin = 'https://example.test';
+    const href = origin + base + '1559/';
+    const context = vm.createContext({ console, URL, WeakMap, Map, Promise,
+        document: { baseURI: href, readyState: 'loading', addEventListener() {},
+            currentScript: { getAttribute() { return origin + base + 'assets/data/proposals.json'; } } },
+        window: { location: { href, origin }, matchMedia() { return { matches: true }; } } });
+    vm.runInContext(popovers.replace(/\}\)\(\);\s*$/, 'globalThis.probe = { targetFromUrl, targetFromAnchor };\n})();'), context);
+    const check = (url, expected) => {
+        const result = context.probe.targetFromUrl(new URL(url, href));
+        assert.equal(JSON.stringify(result), JSON.stringify(expected), `${base}: ${url}`);
+        count++;
+    };
+    check(origin + base + '20/?q=foo#bar', { number: 20 });
+    check(origin + base + 'EIPS/eip-1559', { key: 'eip-1559' });
+    check(origin + base + 'ERCS/erc-20', { key: 'erc-20' });
+    for (const host of ['eips.ethereum.org', 'ercs.ethereum.org']) {
+        const prefix = host.startsWith('eips') ? 'eip' : 'erc';
+        check(`https://${host}/${prefix.toUpperCase()}S/${prefix}-20?q=foo#bar`, { key: `${prefix}-20` });
+        check(`https://${host}/20/`, { key: `${prefix}-20` });
+    }
+    for (const url of ['https://example.net/123/', 'https://example.net/EIPS/eip-1559',
+        'https://example.net/ERCS/erc-20', 'https://eips.ethereum.org.example.net/EIPS/eip-20',
+        'https://eips.ethereum.org/ERCS/erc-20', 'https://ercs.ethereum.org/EIPS/eip-20',
+        'ftp://eips.ethereum.org/EIPS/eip-20', origin + base + 'EIPS/erc-20',
+        origin + base + 'ERCS/eip-20', origin + base + '1559/assets/image.png']) check(url, null);
+    if (base !== '/') {
+        check(origin + '/20/', null);
+        check(origin + base.slice(0, -1) + '-other/20/', null);
+        check(origin + (base === '/ERCs/' ? '/EIPs/' : '/ERCs/') + '20/', null);
+        check(origin + '/EIPS/eip-1559', null);
+    }
+    const anchor = { href: origin + base + '20/?q=foo#bar', getAttribute() { return this.href; }, classList: { contains() { return false; } } };
+    assert.equal(JSON.stringify(context.probe.targetFromAnchor(anchor)), JSON.stringify({ number: 20 }));
+    count++;
+}
+console.log(`PASS popover: ${count} origin/base-path/official-host/prefix/query/fragment cases`);
