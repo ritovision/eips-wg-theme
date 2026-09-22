@@ -1,6 +1,5 @@
 {% if config.taxonomies %}
-{% set structured_data_search_path = build_eips_search.base_path ~ "search/" %}
-{% set structured_data_search_url = get_url(path=structured_data_search_path, trailing_slash=true) %}
+{% set structured_data_search_url = get_url(path="/search/", trailing_slash=true) %}
 <script type="application/ld+json">
 	{
 		"@context": "https://schema.org",

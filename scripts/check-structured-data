@@ -147,7 +147,7 @@ build_fixture_project() {
 validate_json_ld() {
     output_dir=$1
 
-    python3 - "$output_dir" <<'PY'
+    python3 - "$output_dir" "$base_path" <<'PY'
 import json
 import sys
 from html import unescape
@@ -262,7 +262,16 @@ require_type(output_dir, "search/index.html", "BreadcrumbList")
 for html_file in output_dir.rglob("*.html"):
     if html_file.name == "404.html":
         continue
-    load_types(html_file)
+    docs = load_types(html_file)
+    expected = "https://example.test" + sys.argv[2] + "search/"
+    for doc in docs:
+        if doc.get("@type") == "WebSite":
+            assert doc["potentialAction"]["target"]["urlTemplate"] == expected + "?q={search_term_string}", html_file
+        if doc.get("@type") == "ItemList":
+            for item in doc.get("itemListElement", []):
+                nav = item.get("item", {})
+                if nav.get("name") == "Search":
+                    assert nav["url"] == expected, html_file
 PY
 }
 
@@ -280,7 +289,17 @@ fixture_project=$tmp_root/project
 fixture_output=$tmp_root/output
 
 write_fixture_project "$fixture_project"
-build_fixture_project "$fixture_project" "$fixture_output"
-validate_json_ld "$fixture_output"
+for base_path in / /EIPs/ /ERCs/ /wg/review/ERCs/; do
+    python3 - "$fixture_project" "$base_path" <<'PYCONFIG'
+from pathlib import Path
+import re, sys
+project, base = Path(sys.argv[1]), sys.argv[2]
+p = project / "config.toml"
+p.write_text(re.sub(r'^base_url = .*$', 'base_url = "https://example.test' + base + '"', p.read_text(), flags=re.M))
+(project / "data/build_eips_search.toml").write_text(f'enabled = true\nbase_path = "{base}"\nbundle_path = "{base}pagefind/"\n')
+PYCONFIG
+    build_fixture_project "$fixture_project" "$fixture_output"
+    validate_json_ld "$fixture_output"
+done
 
 say "structured data checks passed"
