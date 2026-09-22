@@ -237,7 +237,7 @@ assert_not_contains "$generic_html" 'data-pagefind-body' "generic pages must not
 assert_not_contains "$taxonomy_html" 'data-pagefind-body' "taxonomy pages must not carry data-pagefind-body"
 
 assert_contains "$proposal_html" 'class="h5" data-pagefind-ignore' "proposal badge row must be ignored"
-assert_contains "$proposal_html" 'class="table table-borderless preamble" data-pagefind-ignore' "proposal preamble table must be ignored"
+assert_contains "$proposal_html" 'class="table table-borderless preamble wrap-anywhere" data-pagefind-ignore' "proposal preamble table must preserve wrapping and be ignored"
 assert_contains "$proposal_html" '<nav class="toc" data-pagefind-ignore>' "proposal ToC must be ignored"
 assert_contains "$proposal_html" '<section data-pagefind-ignore>' "proposal citation block must be ignored"
 assert_not_contains "$proposal_html" '<header class="site-header" role="banner" data-pagefind-body' "site nav must not be marked as a Pagefind body"
