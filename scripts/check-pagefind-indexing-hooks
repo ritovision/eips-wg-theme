@@ -199,6 +199,7 @@ assert_no_pagefind_browser_assets() {
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 theme_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
+assert_contains "$theme_root/config/zola.toml" "build_search_index = false" "active Zola config must disable the unused legacy search index"
 zola=${ZOLA:-zola}
 pagefind=${PAGEFIND:-pagefind}
 node=${NODE:-node}

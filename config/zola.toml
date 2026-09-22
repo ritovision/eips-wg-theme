@@ -14,7 +14,8 @@ base_url = "https://example.com/"
 compile_sass = true
 
 # Whether to build a search index to be used later on by a JavaScript library
-build_search_index = true
+# Pagefind owns integrated search; do not emit the unused Elasticlunr index.
+build_search_index = false
 
 taxonomies = [
     { name = "status", feed = true },
