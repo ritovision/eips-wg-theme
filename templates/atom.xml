@@ -36,7 +36,14 @@
       {%- endif -%}
     "/>
     <generator uri="https://www.getzola.org/">Zola</generator>
+    {# A live selection can become empty after deletion. Zola then omits
+       last_updated; use the render time for that empty feed, not an invented
+       proposal date. Preserve Zola's timestamp whenever one is available. #}
+    {%- if last_updated %}
     <updated>{{ last_updated | date(format="%+") }}</updated>
+    {%- else %}
+    <updated>{{ now() | date(format="%+") }}</updated>
+    {%- endif %}
     <id>{{ feed_url | safe }}</id>
     {%- for page in pages %}
     <entry xml:lang="{{ page.lang }}">

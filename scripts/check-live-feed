@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Render the production Atom template with Zola's empty-feed context.
+
+A live deletion can leave the selected feed empty. Zola then supplies no
+last_updated value. Also verify that an existing date is preserved, not replaced
+by the fallback. Uses only a disposable project; never modifies the theme.
+"""
+from datetime import datetime, timezone
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import xml.etree.ElementTree as ET
+
+root = Path(__file__).resolve().parent.parent
+zola = shutil.which('zola')
+assert zola, 'zola must be on PATH'
+with tempfile.TemporaryDirectory(prefix='eips-theme-live-feed-') as scratch:
+    project = Path(scratch)
+    (project / 'templates').mkdir()
+    (project / 'content').mkdir()
+    (project / 'zola.toml').write_text('base_url="https://example.test/live/"\ntitle="Live feed fixture"\ncompile_sass=false\n')
+    for name in ['atom.xml', 'macros.html']:
+        shutil.copyfile(root / 'templates' / name, project / 'templates' / name)
+    prefix = '{% set pages = [] %}{% set feed_url = "https://example.test/live/atom.xml" %}'
+    (project / 'templates/index.html').write_text(prefix + '{% include "atom.xml" %}')
+    (project / 'templates/dated.html').write_text(prefix + '{% set last_updated = "2020-01-02T03:04:05Z" %}{% include "atom.xml" %}')
+    (project / 'content/_index.md').write_text('+++\ntitle="Empty"\n+++\n')
+    (project / 'content/dated.md').write_text('+++\ntitle="Dated"\ntemplate="dated.html"\n+++\n')
+    before = datetime.now(timezone.utc)
+    result = subprocess.run([zola, 'build'], cwd=project, text=True, capture_output=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    after = datetime.now(timezone.utc)
+    atom = '{http://www.w3.org/2005/Atom}'
+    for name, path in [('empty', project / 'public/index.html'), ('dated', project / 'public/dated/index.html')]:
+        feed = ET.fromstring(path.read_text().lstrip())
+        assert feed.tag == atom + 'feed' and not feed.findall(atom + 'entry')
+        updated = datetime.fromisoformat(feed.findtext(atom + 'updated').replace('Z', '+00:00'))
+        if name == 'empty':
+            assert before.timestamp() - 1 <= updated.timestamp() <= after.timestamp() + 1
+        else:
+            assert updated == datetime(2020, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        print('PASS', name, 'Atom feed has a valid preserved-or-current updated timestamp')
