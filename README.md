@@ -148,3 +148,13 @@ build-eips --build-root /tmp/eips-clean -C /work/EIPs-project/EIPs preview --por
 build-eips --build-root /tmp/eips-local -C /work/EIPs-project/EIPs serve --port 1111
 build-eips --build-root /tmp/eips-clean --remote-siblings -C /work/EIPs-project/EIPs serve --clean --port 1112
 ```
+
+## Generated-path ownership
+
+Integrated builds reserve `content/hardforks/`, `content/search.md`,
+`data/build_eips_search.toml`, proposal metadata, `pagefind/`, and
+`assets/generated/` for build-eips. Do not put authored theme files in those
+locations. The standalone hardfork/search sample inputs are under
+`fixtures/generated/`; copy them into a disposable standalone demo project when
+needed. Production search still uses the generated project data; standalone
+fixtures without that data use the existing `config.extra.search` defaults.
