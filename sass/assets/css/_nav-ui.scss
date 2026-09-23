@@ -1,7 +1,7 @@
 :root {
   --nav-ui-bg: rgba(var(--bs-body-bg-rgb), 0.96);
   --nav-ui-panel-bg: rgb(var(--bs-body-bg-rgb));
-  --nav-ui-border: rgba(255, 255, 255, 0.18);
+  --nav-ui-border: var(--bs-border-color-translucent);
   --nav-ui-shadow: 0 -0.4rem 1.6rem rgba(0, 0, 0, 0.28);
   --nav-ui-desktop-header-height: 7.65rem;
 }
@@ -15,8 +15,8 @@
   padding: 0;
   border: 1px solid var(--nav-ui-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: rgba(var(--bs-body-bg-rgb), 0.82);
+  color: var(--bs-body-color);
   text-decoration: none;
   cursor: pointer;
   transition:
@@ -29,16 +29,16 @@
 
 .nav-ui-icon-button:not(:disabled):not(.is-unavailable):hover,
 .nav-ui-icon-button:focus-visible {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.7);
-  color: #fff;
+  background: rgba(var(--bs-secondary-bg-rgb), 0.82);
+  border-color: var(--bs-emphasis-color);
+  color: var(--bs-emphasis-color);
   text-decoration: none;
 }
 
 .nav-ui-icon-button:focus-visible {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.7);
-  color: #fff;
+  background: rgba(var(--bs-secondary-bg-rgb), 0.82);
+  border-color: var(--bs-emphasis-color);
+  color: var(--bs-emphasis-color);
   text-decoration: none;
 }
 
@@ -123,9 +123,9 @@
 .nav-ui-bottom-inner .nav-ui-icon-button:not(:disabled):not(.is-unavailable):active,
 .nav-ui-bottom-inner .nav-ui-icon-button.is-active,
 .nav-ui-bottom-inner .nav-ui-icon-button.is-pressed {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.7);
-  color: #fff;
+  background: rgba(var(--bs-secondary-bg-rgb), 0.82);
+  border-color: var(--bs-emphasis-color);
+  color: var(--bs-emphasis-color);
   text-decoration: none;
 }
 
@@ -298,9 +298,9 @@ body.nav-ui-lock {
 
 @media (hover: none), (pointer: coarse) {
   .nav-ui-icon-button:not(:disabled):not(.is-unavailable):hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(var(--bs-body-bg-rgb), 0.82);
     border-color: var(--nav-ui-border);
-    color: #fff;
+    color: var(--bs-emphasis-color);
     text-decoration: none;
   }
 
@@ -320,9 +320,9 @@ body.nav-ui-lock {
 
 @media (hover: hover) and (pointer: fine) {
   .nav-ui-icon-button:not(:disabled):not(.is-unavailable):hover {
-    background: rgba(255, 255, 255, 0.16);
-    border-color: rgba(255, 255, 255, 0.7);
-    color: #fff;
+    background: rgba(var(--bs-secondary-bg-rgb), 0.82);
+    border-color: var(--bs-emphasis-color);
+    color: var(--bs-emphasis-color);
     text-decoration: none;
   }
 

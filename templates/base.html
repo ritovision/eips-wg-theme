@@ -64,14 +64,18 @@
 			rel="stylesheet"
 			type="text/css"
 			href="{{ get_url(path='/giallo-dark.css', trailing_slash=false) }}"
+			data-color-mode-style="dark"
 			media="(prefers-color-scheme: dark)" />
 
 		<link
 			rel="stylesheet"
 			type="text/css"
 			href="{{ get_url(path='/giallo-light.css', trailing_slash=false) }}"
+			data-color-mode-style="light"
 			media="(prefers-color-scheme: light)" />
 		{% endif %}
+
+		<script src="{{ get_url(path='/assets/scripts/color-mode.js', trailing_slash=false) }}"></script>
 
 		{% block rss %}
 		{% for feed_filename in config.feed_filenames %}
@@ -298,6 +302,18 @@
 					{% if config.description %}
 					<div class="footer-col">
 						<p>{{ config.description }}</p>
+						<div class="footer-appearance" data-color-mode-control hidden>
+							<span>Appearance</span>
+							<button type="button" class="theme-toggle" data-color-mode-toggle role="switch" aria-checked="false" aria-label="Dark mode" title="Switch to dark mode">
+								<svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false">
+									<circle cx="12" cy="12" r="4"></circle>
+									<path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+								</svg>
+								<svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+									<path d="M20.5 13.5A8.5 8.5 0 0 1 10.5 3.5a8.5 8.5 0 1 0 10 10Z"></path>
+								</svg>
+							</button>
+						</div>
 					</div>
 					{% endif %}
 				</div>
