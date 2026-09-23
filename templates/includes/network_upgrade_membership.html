@@ -1,3 +1,4 @@
+{% import "macros/proposal_destination.html" as proposal_destination %}
 {% set stage_description = upgrade.stage_label %}
 {% if upgrade.stage_key == "included" %}
 {% set stage_description = "Included in this hardfork" %}
@@ -10,7 +11,7 @@
 {% elif upgrade.stage_key == "declined" or upgrade.stage_key == "declined-for-inclusion" %}
 {% set stage_description = "Declined for this hardfork" %}
 {% endif %}
-<a href="{{ upgrade.meta_url | safe }}">{{ upgrade.display_name }}</a>
+<a href="{{ proposal_destination::href(destination=upgrade.meta) | safe }}">{{ upgrade.display_name }}</a>
 <span
 	class="badge text-light network-upgrade-stage network-upgrade-stage--{{ upgrade.stage_key }}"
 	data-bs-toggle="tooltip"

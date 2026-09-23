@@ -6,7 +6,7 @@ template = "hardforks.html"
 slug = "pectra"
 display_name = "Pectra"
 meta_eip = 7201
-meta_url = "/7201/"
+meta = { local_route = "/7201/", public_url = "https://eips.ethereum.org/EIPS/eip-7201" }
 meta_status = "Final"
 
 [[extra.network_upgrades.stages]]
@@ -18,7 +18,7 @@ number = 214
 title = "New opcode STATICCALL"
 status = "Final"
 type = "Standards Track"
-url = "/214/"
+destination = { local_route = "/214/", public_url = "https://eips.ethereum.org/EIPS/eip-214" }
 category = "Core"
 subgroup = "Core EIPs"
 
@@ -27,7 +27,7 @@ number = 165
 title = "Standard Interface Detection"
 status = "Final"
 type = "Standards Track"
-url = "/165/"
+destination = { local_route = "/165/", public_url = "https://ercs.ethereum.org/ERCS/erc-165" }
 category = "ERC"
 subgroup = "Other EIPs"
 
@@ -35,7 +35,7 @@ subgroup = "Other EIPs"
 slug = "glamsterdam"
 display_name = "Glamsterdam"
 meta_eip = 7773
-meta_url = "https://eips.ethereum.org/EIPS/eip-7773"
+meta = { public_url = "https://eips.ethereum.org/EIPS/eip-7773" }
 meta_status = "Draft"
 
 [[extra.network_upgrades.stages]]
@@ -47,7 +47,7 @@ number = 165
 title = "Standard Interface Detection"
 status = "Final"
 type = "Standards Track"
-url = "https://eips.ethereum.org/EIPS/eip-165"
+destination = { public_url = "https://ercs.ethereum.org/ERCS/erc-165" }
 category = "ERC"
 
 [[extra.network_upgrades.stages.rows]]
@@ -55,7 +55,7 @@ number = 7773
 title = "Glamsterdam Meta EIP"
 status = "Draft"
 type = "Meta"
-url = "https://eips.ethereum.org/EIPS/eip-7773"
+destination = { public_url = "https://eips.ethereum.org/EIPS/eip-7773" }
 
 [[extra.network_upgrades.stages]]
 key = "considered"
@@ -66,7 +66,7 @@ rows = []
 slug = "empty-demo"
 display_name = "Empty Demo"
 meta_eip = 7201
-meta_url = "/7201/"
+meta = { local_route = "/7201/", public_url = "https://eips.ethereum.org/EIPS/eip-7201" }
 meta_status = "Draft"
 
 [[extra.network_upgrades.stages]]

@@ -158,3 +158,16 @@ locations. The standalone hardfork/search sample inputs are under
 `fixtures/generated/`; copy them into a disposable standalone demo project when
 needed. Production search still uses the generated project data; standalone
 fixtures without that data use the existing `config.extra.search` defaults.
+
+## Generated proposal contract
+
+Use the paired preprocessor's first-production destination shape: hardfork `meta`
+and row `destination` objects contain `public_url` and an optional logical,
+unprefixed `local_route`. An absent local route means the target was omitted.
+`macros/proposal_destination.html` resolves local routes through `get_url` once and
+otherwise uses the public fallback. The same helper handles proposal memberships.
+Do not restore `url`/`meta_url` fields or support prerelease adapters.
+
+Popover `proposals.json` records contain metadata only, not destinations. Schema 1
+is the single supported first-production shape. Search/corpus continue consuming the
+rendered `data-pagefind-*` hooks; they do not consume a parallel catalog feed.

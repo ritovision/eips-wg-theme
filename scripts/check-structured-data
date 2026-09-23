@@ -119,7 +119,7 @@ template = "hardforks.html"
 slug = "pectra"
 display_name = "Pectra"
 meta_eip = 1559
-meta_url = "/1559/"
+meta = { local_route = "/1559/", public_url = "https://eips.ethereum.org/EIPS/eip-1559" }
 meta_status = "Final"
 
 [[extra.network_upgrades.stages]]
@@ -131,7 +131,7 @@ number = 1559
 title = "Fee Market Change"
 status = "Final"
 type = "Standards Track"
-url = "/1559/"
+destination = { local_route = "/1559/", public_url = "https://eips.ethereum.org/EIPS/eip-1559" }
 category = "Core"
 +++
 EOF

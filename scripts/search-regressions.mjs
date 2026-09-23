@@ -116,7 +116,24 @@ for (const base of ['/', '/EIPs/', '/ERCs/', '/wg/review/ERCs/']) {
         document: { baseURI: href, readyState: 'loading', addEventListener() {},
             currentScript: { getAttribute() { return origin + base + 'assets/data/proposals.json'; } } },
         window: { location: { href, origin }, matchMedia() { return { matches: true }; } } });
-    vm.runInContext(popovers.replace(/\}\)\(\);\s*$/, 'globalThis.probe = { targetFromUrl, targetFromAnchor };\n})();'), context);
+    vm.runInContext(popovers.replace(/\}\)\(\);\s*$/, 'globalThis.probe = { targetFromUrl, targetFromAnchor, parseProposalMetadata, recordForTarget };\n})();'), context);
+    // The corrected first-production metadata has no destination fields.
+    const payload = process.argv[3] ? JSON.parse(await readFile(process.argv[3], 'utf8')) : {
+        schema_version: 1, active_prefix: "EIP", proposals: {
+            "eip-1559": { number: 1559, prefix: "EIP", title: "Fee Market", status: "Final", type: "Standards Track", category: "Core" },
+            "erc-20": { number: 20, prefix: "ERC", title: "Tokens", status: "Final", type: "Standards Track", category: "ERC" },
+        },
+    };
+    const parsed = context.probe.parseProposalMetadata(payload);
+    assert.equal(parsed.recordsByKey.size, Object.keys(payload.proposals).length);
+    for (const [key, record] of Object.entries(payload.proposals)) {
+        for (const unused of ["url", "local_route", "public_url", "destination"]) assert.ok(!(unused in record));
+        const consumed = context.probe.recordForTarget(parsed, { key });
+        assert.equal(consumed.number, record.number);
+        assert.equal(consumed.title, record.title.trim());
+        assert.equal(consumed.prefix, record.prefix);
+    }
+    assert.throws(() => context.probe.parseProposalMetadata({ ...payload, schema_version: 999 }), /unsupported/);
     const check = (url, expected) => {
         const result = context.probe.targetFromUrl(new URL(url, href));
         assert.equal(JSON.stringify(result), JSON.stringify(expected), `${base}: ${url}`);
@@ -146,3 +163,5 @@ for (const base of ['/', '/EIPs/', '/ERCs/', '/wg/review/ERCs/']) {
     count++;
 }
 console.log(`PASS popover: ${count} origin/base-path/official-host/prefix/query/fragment cases`);
+
+console.log("PASS metadata producer/consumer: exact no-destination records accepted; mismatched schema refused");
