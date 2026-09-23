@@ -458,6 +458,7 @@
 }
 
 .search-result-card {
+	min-width: 0;
 	border: 1px solid var(--bs-border-color, #dee2e6);
 	border-radius: 6px;
 	background: var(--bs-body-bg, #fff);
@@ -525,6 +526,7 @@
 }
 
 .search-result-excerpt {
+	overflow-wrap: anywhere;
 	color: var(--bs-secondary-color, #666);
 	margin: 0.55rem 0 0;
 }
