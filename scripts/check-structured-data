@@ -288,6 +288,9 @@ for html_file in output_dir.rglob("*.html"):
     if html_file.name == "404.html":
         continue
     docs = load_types(html_file)
+    # Site chrome assets must follow the same deployment context as navigation.
+    icon = "https://example.test" + sys.argv[2] + "assets/images/apple-touch-icon.png"
+    assert f'<link rel="apple-touch-icon" href="{icon}"' in unescape(html_file.read_text()), html_file
     expected = "https://example.test" + sys.argv[2] + "search/"
     for doc in docs:
         if doc.get("@type") == "WebSite":

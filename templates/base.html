@@ -17,7 +17,7 @@
 
 		<link rel="icon" type="image/svg+xml" href="{{ get_url(path='/assets/images/logomark.svg') }}" />
 		<link rel="icon" type="image/png" href="{{ get_url(path='/assets/images/favicon.png') }}" sizes="16x16" />
-		<link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png" />
+		<link rel="apple-touch-icon" href="{{ get_url(path='/assets/images/apple-touch-icon.png') }}" />
 
 		{% set social_image = get_url(path='/assets/images/og-image.png', trailing_slash=false) %}
 		<meta property="og:site_name" content="{{ config.title }}" />
