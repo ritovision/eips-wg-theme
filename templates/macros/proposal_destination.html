@@ -1,7 +1,7 @@
 {# Paired first-production contract: routes are logical, never base-prefixed. #}
 {% macro href(destination) -%}
 {%- if destination.local_route -%}
-{{- get_url(path=destination.local_route) -}}
+{{- get_url(path=destination.local_route, trailing_slash=true) -}}
 {%- else -%}
 {{- destination.public_url -}}
 {%- endif -%}

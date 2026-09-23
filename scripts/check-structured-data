@@ -103,6 +103,22 @@ category = "Core"
 [[extra.author_details]]
 name = "Alice"
 email = "alice@example.test"
+
+[[extra.network_upgrades]]
+display_name = "Local fixture"
+slug = "local-fixture"
+meta_eip = 1559
+meta = { local_route = "/1559/", public_url = "https://eips.ethereum.org/EIPS/eip-1559" }
+stage_key = "included"
+stage_label = "Included"
+
+[[extra.network_upgrades]]
+display_name = "Omitted fixture"
+slug = "omitted-fixture"
+meta_eip = 7773
+meta = { public_url = "https://eips.ethereum.org/EIPS/eip-7773" }
+stage_key = "considered"
+stage_label = "Considered for Inclusion"
 +++
 
 # Abstract
@@ -243,6 +259,15 @@ if not has_search_action(home_docs):
     raise AssertionError("index.html: expected WebSite SearchAction")
 if not has_navigation_search(home_docs):
     raise AssertionError("index.html: expected Search navigation schema item")
+
+proposal_html = unescape((output_dir / "1559/index.html").read_text())
+local_url = "https://example.test" + sys.argv[2] + "1559/"
+assert f'href="{local_url}"' in proposal_html
+assert 'href="https://eips.ethereum.org/EIPS/eip-7773"' in proposal_html
+assert 'href="/1559/"' not in proposal_html
+hardfork_html = unescape((output_dir / "hardforks/index.html").read_text())
+assert f'href="{local_url}"' in hardfork_html
+assert 'href="/1559/"' not in hardfork_html
 
 eip_docs = require_type(output_dir, "1559/index.html", "Article")
 require_type(output_dir, "1559/index.html", "BreadcrumbList")

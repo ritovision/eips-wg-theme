@@ -1,5 +1,6 @@
 {% extends "page.html" %}
 {% import "macros.html" as macros %}
+{% import "macros/proposal_destination.html" as proposal_destination %}
 
 {% block title -%}
 {{ macros::eip_number(page=page) }}: {{ page.title }} | {{ config.title -}}
