@@ -1,11 +1,12 @@
 name = "eips-theme"
 description = "A theme for Ethereum Improvement Proposals"
 license = "MIT"
-homepage = "https://github.com/eips-wg/theme"
+homepage = "https://github.com/ritovision/eips-wg-theme"
 # The minimum version of Zola required
 min_version = "0.22.1"
-# An optional live demo URL
-demo = "https://eips-wg.github.io/eips-theme"
+# An optional live demo URL. This is the planned staging GitHub Pages location
+# for the theme demo; no demo is deployed there yet.
+demo = "https://ritovision.github.io/eips-wg-theme/"
 
 # Any variable there can be overridden in the end user `config.toml`
 # You don't need to prefix variables by the theme name but as this will

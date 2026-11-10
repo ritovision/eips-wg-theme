@@ -12,7 +12,15 @@ Local workspace commands require these tools on `PATH`:
 * `build-eips`
 * Zola 0.22.1
 
-Git must be installed separately. The setup script locates or installs `build-eips` and Zola, adds locally installed tool directories to `PATH` for the current shell session, and prints guidance for making those `PATH` changes permanent.
+Git must be installed separately. The setup script uses an existing `build-eips` and locates or installs Zola, adds locally installed tool directories to `PATH` for the current shell session, and prints guidance for making those `PATH` changes permanent.
+
+No `build-eips` release has been published yet, so the setup script cannot download one. Install it from source before running setup:
+
+```sh
+cargo install --locked --git https://github.com/ritovision/build-eips.git
+```
+
+Release-binary installation will be enabled by a separate release rollout.
 
 ### Bootstrap The Workspace
 
@@ -46,11 +54,11 @@ EIPs-project/
 └── theme/
 ```
 
-Theme has no active proposal identity of its own, so the script anchors setup through `../EIPs` by default and clones `https://github.com/eips-wg/EIPs.git` there when that checkout is missing. The selected active proposal checkout must contain `Build.toml`.
+Theme has no active proposal identity of its own, so the script anchors setup through `../EIPs` by default and clones `https://github.com/ritovision/EIPs-WG.git` there when that checkout is missing. The selected active proposal checkout must contain `Build.toml`.
 
 `Build.toml` is the active proposal repo manifest. It supplies the active and sibling proposal locations, rendered base URL, and `[theme]` source/pin used when `build-eips init` first creates `workspace/theme`. `.build-eips.toml` is workspace-local configuration for settings such as local server binding, base URL overrides, build roots, and targeted rendering. Runtime and editing use the local editable `workspace/theme` checkout; init does not reset an existing theme checkout.
 
-Fresh default setup depends on the EIPs rollout that adds `Build.toml` to the canonical remote. Until that rollout reaches the default branch, set `ACTIVE_REPO_ROOT` to a local manifest-bearing EIPs or ERCs checkout:
+The default `ritovision/EIPs-WG` clone carries `Build.toml` on `main`. To anchor setup through another manifest-bearing checkout such as ERCs, set `ACTIVE_REPO_ROOT`:
 
 ```sh
 ACTIVE_REPO_ROOT=../ERCs ./scripts/dev-setup
@@ -72,7 +80,7 @@ Pass optional flags through the script when you want to work on the system tooli
 ./scripts/dev-setup --template --platform-dev
 ```
 
-`--template` adds the optional `template/` proposal template repo. `--platform-dev` adds local `preprocessor/` and `eipw/` checkouts for build system development.
+`--template` adds the optional `template/` proposal template repo. `--platform-dev` adds local `build-eips/` and `eipw/` checkouts for build system development.
 
 After setup, run local site commands against the active proposal repo:
 
@@ -161,7 +169,7 @@ fixtures without that data use the existing `config.extra.search` defaults.
 
 ## Generated proposal contract
 
-Use the paired preprocessor's first-production destination shape: hardfork `meta`
+Use the paired `build-eips` first-production destination shape: hardfork `meta`
 and row `destination` objects contain `public_url` and an optional logical,
 unprefixed `local_route`. An absent local route means the target was omitted.
 `macros/proposal_destination.html` resolves local routes through `get_url` once and

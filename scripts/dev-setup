@@ -2,7 +2,12 @@
 
 set -eu
 
-DEFAULT_ACTIVE_REPO_URL=https://github.com/eips-wg/EIPs.git
+# No build-eips release has been published in ritovision/build-eips yet, so
+# release-binary installation stays disabled. Setting this to a reviewed
+# release's download URL belongs to the separate release rollout.
+BUILD_EIPS_RELEASE_BASE_URL=
+
+DEFAULT_ACTIVE_REPO_URL=https://github.com/ritovision/EIPs-WG.git
 
 say() {
     printf '%s\n' "$*"
@@ -64,7 +69,7 @@ ensure_active_repo_root() {
             die "configured ACTIVE_REPO_ROOT does not contain Build.toml: $ACTIVE_REPO_ROOT. Point ACTIVE_REPO_ROOT at a manifest-bearing EIPs or ERCs checkout."
         fi
 
-        die "default EIPs checkout at $ACTIVE_REPO_ROOT does not contain Build.toml. The eips-wg/EIPs default branch is awaiting the Build.toml rollout; set ACTIVE_REPO_ROOT to a manifest-bearing EIPs or ERCs checkout until it is available."
+        die "default EIPs checkout at $ACTIVE_REPO_ROOT does not contain Build.toml. Replace it with a clone of $DEFAULT_ACTIVE_REPO_URL or set ACTIVE_REPO_ROOT to a manifest-bearing EIPs or ERCs checkout."
     fi
 }
 
@@ -337,6 +342,10 @@ ensure_install_dir() {
 }
 
 install_build_eips() {
+    if [ -z "$BUILD_EIPS_RELEASE_BASE_URL" ]; then
+        die "build-eips is not on PATH and no build-eips release has been published yet, so this script cannot download one. Install it from source with 'cargo install --locked --git https://github.com/ritovision/build-eips.git', make sure it is on PATH, then rerun this script."
+    fi
+
     case "$(uname -s)" in
         Linux)
             archive_name=build-eips-ubuntu.tar.xz
@@ -358,7 +367,7 @@ install_build_eips() {
 
     archive_path=$tmpdir/$archive_name
     sidecar_path=$tmpdir/$archive_name.sha256
-    release_base_url=https://github.com/eips-wg/preprocessor/releases/latest/download
+    release_base_url=$BUILD_EIPS_RELEASE_BASE_URL
 
     say "Installing build-eips from $release_base_url/$archive_name"
     download "$release_base_url/$archive_name" "$archive_path"

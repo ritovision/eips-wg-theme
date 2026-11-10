@@ -5,7 +5,11 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$DefaultActiveRepoUrl = "https://github.com/eips-wg/EIPs.git"
+# No build-eips release has been published in ritovision/build-eips yet, so
+# release-binary installation stays disabled. Setting this to a reviewed
+# release's download URL belongs to the separate release rollout.
+$BuildEipsReleaseBaseUrl = ""
+$DefaultActiveRepoUrl = "https://github.com/ritovision/EIPs-WG.git"
 
 function Say {
     param([string]$Message)
@@ -228,8 +232,12 @@ function Install-BuildEips {
         [string]$BuildEipsPath
     )
 
+    if ([string]::IsNullOrEmpty($BuildEipsReleaseBaseUrl)) {
+        Die "build-eips is not on PATH and no build-eips release has been published yet, so this script cannot download one. Install it from source with 'cargo install --locked --git https://github.com/ritovision/build-eips.git', make sure it is on PATH, then rerun this script."
+    }
+
     $archiveName = "build-eips-windows.zip"
-    $releaseBaseUrl = "https://github.com/eips-wg/preprocessor/releases/latest/download"
+    $releaseBaseUrl = $BuildEipsReleaseBaseUrl
     $tmpRoot = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("build-eips-" + [System.Guid]::NewGuid().ToString("N"))
     $archivePath = Join-Path -Path $tmpRoot -ChildPath $archiveName
     $sidecarPath = Join-Path -Path $tmpRoot -ChildPath "$archiveName.sha256"
@@ -520,7 +528,7 @@ function Assert-ActiveRepoManifest {
         Die "configured ACTIVE_REPO_ROOT does not contain Build.toml: $ActiveRepoRoot. Point ACTIVE_REPO_ROOT at a manifest-bearing EIPs or ERCs checkout."
     }
 
-    Die "default EIPs checkout at $ActiveRepoRoot does not contain Build.toml. The eips-wg/EIPs default branch is awaiting the Build.toml rollout; set ACTIVE_REPO_ROOT to a manifest-bearing EIPs or ERCs checkout until it is available."
+    Die "default EIPs checkout at $ActiveRepoRoot does not contain Build.toml. Replace it with a clone of $DefaultActiveRepoUrl or set ACTIVE_REPO_ROOT to a manifest-bearing EIPs or ERCs checkout."
 }
 
 function ConvertTo-PowerShellQuotedPath {

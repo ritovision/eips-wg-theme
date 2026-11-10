@@ -1,8 +1,9 @@
 title = "Ethereum Improvement Proposals (Theme Demo)"
 description = "Ethereum Improvement Proposal (EIP) demo theme for the Zola static site generator."
 
-# The URL the site will be built for
-base_url = "https://eips-wg.github.io/eips-theme"
+# The URL the site will be built for: the planned staging GitHub Pages location
+# for the theme demo (not deployed yet), not a live EIP/ERC site.
+base_url = "https://ritovision.github.io/eips-wg-theme"
 
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
@@ -38,7 +39,7 @@ extra_grammars = [
 ]
 
 [extra.github]
-eip_repository = "https://github.com/eips-wg/eips-theme"
+eip_repository = "https://github.com/ritovision/eips-wg-theme"
 
 [extra.taxonomies.status.stagnant]
 tooltip = "This EIP had no activity for at least 6 months. This EIP should not be used."
