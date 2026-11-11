@@ -14,13 +14,13 @@ Local workspace commands require these tools on `PATH`:
 
 Git must be installed separately. The setup script uses an existing `build-eips` and locates or installs Zola, adds locally installed tool directories to `PATH` for the current shell session, and prints guidance for making those `PATH` changes permanent.
 
-No `build-eips` release has been published yet, so the setup script cannot download one. Install it from source before running setup:
+The setup script uses the **pinned, checksum-verified** [`build-eips v0.1.0-rc.1`](https://github.com/ritovision/build-eips/releases/tag/v0.1.0-rc.1) release when the binary is not already installed. The release includes binaries for Linux x86-64, Windows x86-64, and macOS on Apple Silicon or Intel. To install from source instead:
 
 ```sh
 cargo install --locked --git https://github.com/ritovision/build-eips.git
 ```
 
-Release-binary installation will be enabled by a separate release rollout.
+Binary downloads verify both the published SHA-256 sidecar and an expected digest pinned in the setup script. A changed release asset fails validation.
 
 ### Bootstrap The Workspace
 

@@ -5,10 +5,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-# No build-eips release has been published in ritovision/build-eips yet, so
-# release-binary installation stays disabled. Setting this to a reviewed
-# release's download URL belongs to the separate release rollout.
-$BuildEipsReleaseBaseUrl = ""
+# Fixed, reviewed RC release URL. Checksum sidecars and the fixed digest below
+# must both match; do not substitute /latest or an unreviewed release.
+$BuildEipsReleaseBaseUrl = "https://github.com/ritovision/build-eips/releases/download/v0.1.0-rc.1"
+$BuildEipsWindowsSha256 = "6942c7256d536b2f03168db2a34fd966d91805dba2c50312a11d490c7ac48bc5"
 $DefaultActiveRepoUrl = "https://github.com/ritovision/EIPs-WG.git"
 
 function Say {
@@ -233,7 +233,7 @@ function Install-BuildEips {
     )
 
     if ([string]::IsNullOrEmpty($BuildEipsReleaseBaseUrl)) {
-        Die "build-eips is not on PATH and no build-eips release has been published yet, so this script cannot download one. Install it from source with 'cargo install --locked --git https://github.com/ritovision/build-eips.git', make sure it is on PATH, then rerun this script."
+        Die "pinned build-eips release URL is missing"
     }
 
     $archiveName = "build-eips-windows.zip"
@@ -254,6 +254,7 @@ function Install-BuildEips {
         Invoke-ReleaseDownload -Url "$releaseBaseUrl/$archiveName" -Destination $archivePath
         Invoke-ReleaseDownload -Url "$releaseBaseUrl/$archiveName.sha256" -Destination $sidecarPath
         Assert-ArchiveChecksum -ArchivePath $archivePath -SidecarPath $sidecarPath -ArchiveName $archiveName
+        Assert-FileSha256 -ArchivePath $archivePath -ExpectedHash $BuildEipsWindowsSha256 -ArchiveName $archiveName
 
         Expand-Archive -LiteralPath $archivePath -DestinationPath $extractDir -Force
 

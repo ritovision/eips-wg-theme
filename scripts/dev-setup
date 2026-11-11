@@ -2,10 +2,9 @@
 
 set -eu
 
-# No build-eips release has been published in ritovision/build-eips yet, so
-# release-binary installation stays disabled. Setting this to a reviewed
-# release's download URL belongs to the separate release rollout.
-BUILD_EIPS_RELEASE_BASE_URL=
+# Fixed, reviewed RC release URL. Checksum sidecars and the fixed digest below
+# must both match; do not substitute /latest or an unreviewed release.
+BUILD_EIPS_RELEASE_BASE_URL=https://github.com/ritovision/build-eips/releases/download/v0.1.0-rc.1
 
 DEFAULT_ACTIVE_REPO_URL=https://github.com/ritovision/EIPs-WG.git
 
@@ -343,18 +342,24 @@ ensure_install_dir() {
 
 install_build_eips() {
     if [ -z "$BUILD_EIPS_RELEASE_BASE_URL" ]; then
-        die "build-eips is not on PATH and no build-eips release has been published yet, so this script cannot download one. Install it from source with 'cargo install --locked --git https://github.com/ritovision/build-eips.git', make sure it is on PATH, then rerun this script."
+        die "pinned build-eips release URL is missing"
     fi
 
-    case "$(uname -s)" in
-        Linux)
+    case "$(uname -s)/$(uname -m)" in
+        Linux/x86_64)
             archive_name=build-eips-ubuntu.tar.xz
+            archive_sha256=1ec83160e7a9ca8c54339714823d8bbff2da478625292f58cb093ff0b6dcb30e
             ;;
-        Darwin)
-            archive_name=build-eips-macos.tar.xz
+        Darwin/arm64|Darwin/aarch64)
+            archive_name=build-eips-macos-arm64.tar.xz
+            archive_sha256=ef6e380aee6a5b1c652141056ab235169d65dca9bdd5c39e557dfa3356d66fe7
+            ;;
+        Darwin/x86_64)
+            archive_name=build-eips-macos-x86_64.tar.xz
+            archive_sha256=6f4b858bfba2663abf57640b3933537e61ff6fa3e962ca3f3fbe7e4bbcd859f0
             ;;
         *)
-            die "unsupported operating system for automatic build-eips installation"
+            die "unsupported platform for build-eips v0.1.0-rc.1 binary; install from source instead"
             ;;
     esac
 
@@ -373,6 +378,7 @@ install_build_eips() {
     download "$release_base_url/$archive_name" "$archive_path"
     download "$release_base_url/$archive_name.sha256" "$sidecar_path"
     verify_archive_checksum "$archive_path" "$sidecar_path" "$archive_name"
+    verify_file_hash "$archive_path" "$archive_sha256" "$archive_name"
 
     tar -xf "$archive_path" -C "$tmpdir"
     [ -f "$tmpdir/build-eips" ] || die "release archive did not contain build-eips"
