@@ -1,0 +1,50 @@
+name: Theme CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zola:
+    name: Build theme demo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Install checksum-verified Zola 0.22.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=zola-v0.22.1-x86_64-unknown-linux-gnu.tar.gz
+          directory="$RUNNER_TEMP/eipw-zola"
+          mkdir -p "$directory"
+          curl --fail --location --silent --show-error \
+            "https://github.com/getzola/zola/releases/download/v0.22.1/$archive" \
+            --output "$directory/$archive"
+          (cd "$directory" && printf '%s  %s\n' \
+            '0ca09aa40376aaa9ddfb512ff9ad963262ef95edb0d0f2d5ec6961b6f5cf22ef' \
+            "$archive" | sha256sum --check)
+          tar -xzf "$directory/$archive" -C "$directory"
+          echo "$directory" >> "$GITHUB_PATH"
+
+      - name: Prepare generated search fixture for standalone demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp fixtures/generated/data/build_eips_search.toml data/build_eips_search.toml
+
+      - name: Build theme demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          zola --version
+          zola build --output-dir "$RUNNER_TEMP/eips-theme-demo"
+          test -s "$RUNNER_TEMP/eips-theme-demo/index.html"
