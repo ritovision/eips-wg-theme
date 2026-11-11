@@ -39,6 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p data
           cp fixtures/generated/data/build_eips_search.toml data/build_eips_search.toml
 
       - name: Build theme demo
